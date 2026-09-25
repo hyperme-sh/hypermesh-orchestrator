@@ -9,6 +9,9 @@ TEST_CHAT = "https://chat.test.hyperme.sh"
 TEST_PORTAL = "https://portal.test.hyperme.sh"
 DEFAULT_CATALOG = "llama-3.1-8b-q4"
 DEFAULT_MESSAGE = "Reply with the single word ready."
+# Matches hypermesh fleet health: a host heartbeat older than this is stale,
+# and the host picks up lease_start on its next heartbeat.
+DEFAULT_TICKET_WAIT_S = 180.0
 CONTROL_PLANE_STUB = "/api/v1/hypermesh/renter/chat/completions"
 MODES = frozenset({"renter", "native"})
 
@@ -28,6 +31,7 @@ class Config:
     message: str = DEFAULT_MESSAGE
     success_url: str = f"{TEST_PORTAL}/hypermesh/ok"
     cancel_url: str = f"{TEST_PORTAL}/hypermesh/cancel"
+    ticket_wait_s: float = DEFAULT_TICKET_WAIT_S
 
     def __post_init__(self) -> None:
         if self.mode not in MODES:
@@ -36,6 +40,8 @@ class Config:
             raise OrchestratorError("api base and chat base are required")
         if not self.tenant.strip() or not self.api_key.strip():
             raise OrchestratorError("tenant and API key are required")
+        if not _wait_ok(self.ticket_wait_s):
+            raise OrchestratorError("ticket wait must be zero or more seconds")
         chat_completions_url(self.chat_base)
 
 
@@ -56,6 +62,28 @@ def chat_completions_url(chat_base: str) -> str:
 
 def api_url(api_base: str, path: str) -> str:
     return api_base.strip().rstrip("/") + path
+
+
+def _wait_ok(value: float) -> bool:
+    return value >= 0 and value == value and value != float("inf")
+
+
+def resolve_ticket_wait_s(*, flag: float | None, env: str | None) -> float:
+    """Flag wins. Otherwise HYPERMESH_TICKET_WAIT_S. Otherwise one heartbeat window."""
+
+    if flag is not None:
+        if not _wait_ok(flag):
+            raise OrchestratorError("ticket wait must be zero or more seconds")
+        return flag
+    if env is None or not env.strip():
+        return DEFAULT_TICKET_WAIT_S
+    try:
+        parsed = float(env.strip())
+    except ValueError as exc:
+        raise OrchestratorError("HYPERMESH_TICKET_WAIT_S must be a number of seconds") from exc
+    if not _wait_ok(parsed):
+        raise OrchestratorError("ticket wait must be zero or more seconds")
+    return parsed
 
 
 def tenant_headers(config: Config) -> dict[str, str]:

@@ -27,7 +27,6 @@ from hypermesh_orchestrator.config import (
 )
 
 LIVE_LEASE = frozenset({"starting", "active"})
-DEFAULT_TICKET_WAIT_S = 5.0
 DEFAULT_TICKET_POLL_S = 0.25
 
 
@@ -279,7 +278,7 @@ def run(
     config: Config,
     *,
     client: httpx.Client,
-    ticket_wait_s: float = DEFAULT_TICKET_WAIT_S,
+    ticket_wait_s: float | None = None,
     ticket_poll_s: float = DEFAULT_TICKET_POLL_S,
     sleep: Callable[[float], None] = time.sleep,
     monotonic: Callable[[], float] = time.monotonic,
@@ -294,11 +293,12 @@ def run(
     tickets = fetch_host_tickets(config, client)
     live = list_leases(config, client)
     selected = _select_leases(config, client, hosts, tickets, live, booking)
+    wait_s = config.ticket_wait_s if ticket_wait_s is None else ticket_wait_s
     confirmed = _await_tickets(
         config,
         client,
         selected,
-        ticket_wait_s=ticket_wait_s,
+        ticket_wait_s=wait_s,
         ticket_poll_s=ticket_poll_s,
         sleep=sleep,
         monotonic=monotonic,

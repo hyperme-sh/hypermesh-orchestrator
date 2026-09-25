@@ -16,6 +16,7 @@ from hypermesh_orchestrator.config import (
     TEST_CHAT,
     Config,
     OrchestratorError,
+    resolve_ticket_wait_s,
 )
 from hypermesh_orchestrator.run import run
 
@@ -35,6 +36,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--tenant", required=True)
     parser.add_argument("--catalog-id", default=DEFAULT_CATALOG)
     parser.add_argument("--message", default=DEFAULT_MESSAGE)
+    parser.add_argument(
+        "--ticket-wait-s",
+        type=float,
+        default=None,
+        help="Seconds to wait for a host ticket after a new lease (default 180)",
+    )
     return parser
 
 
@@ -45,6 +52,10 @@ def main(argv: list[str] | None = None) -> int:
         print("HYPERMESH_API_KEY is required", file=sys.stderr)
         return 1
     try:
+        ticket_wait_s = resolve_ticket_wait_s(
+            flag=args.ticket_wait_s,
+            env=os.environ.get("HYPERMESH_TICKET_WAIT_S"),
+        )
         config = Config(
             mode=args.mode,
             api_base=args.api_base,
@@ -53,9 +64,10 @@ def main(argv: list[str] | None = None) -> int:
             api_key=api_key,
             catalog_id=args.catalog_id,
             message=args.message,
+            ticket_wait_s=ticket_wait_s,
         )
         with httpx.Client(timeout=httpx.Timeout(30.0)) as client:
-            stitched = run(config, client=client)
+            stitched = run(config, client=client, ticket_wait_s=config.ticket_wait_s)
     except OrchestratorError as exc:
         print(str(exc), file=sys.stderr)
         return 1
