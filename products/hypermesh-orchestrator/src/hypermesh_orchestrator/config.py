@@ -59,9 +59,10 @@ def api_url(api_base: str, path: str) -> str:
 
 
 def tenant_headers(config: Config) -> dict[str, str]:
+    """The chat door reads Authorization Bearer and ignores a second key header."""
+
     return {
         "Authorization": f"Bearer {config.api_key}",
-        "X-Api-Key": config.api_key,
         "X-Tenant-ID": config.tenant,
         "Content-Type": "application/json",
     }

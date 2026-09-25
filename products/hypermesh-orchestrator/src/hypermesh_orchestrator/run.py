@@ -1,8 +1,9 @@
 """Ask AIuditor for the allowed set, reuse or open one lease per host, stitch.
 
-Tickets are checked before a new lease is opened. A lease this run opened
-is closed when its ticket is still missing or a completion fails. A live
-lease for the same host is reused so a retry does not double-book.
+Tickets are checked before a new lease is opened. A lease opened here
+is polled until its ticket appears or the wait expires, then closed.
+A starting or active lease for the same host is reused. The idempotency
+key is scoped to this run, so a later run can book again after a close.
 
 Does not call AIuditor allocate. Native mode is the same function with the
 flags pointed at the plane.
@@ -10,6 +11,9 @@ flags pointed at the plane.
 
 from __future__ import annotations
 
+import time
+import uuid
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import httpx
@@ -22,7 +26,9 @@ from hypermesh_orchestrator.config import (
     tenant_headers,
 )
 
-LIVE_LEASE = frozenset({"offered", "paid", "starting", "active"})
+LIVE_LEASE = frozenset({"starting", "active"})
+DEFAULT_TICKET_WAIT_S = 5.0
+DEFAULT_TICKET_POLL_S = 0.25
 
 
 class TicketMissing(OrchestratorError):
@@ -107,13 +113,17 @@ def list_leases(config: Config, client: httpx.Client) -> list[dict[str, str]]:
     return live
 
 
-def idempotency_key(config: Config, host: Host) -> str:
-    return f"{config.tenant}:{config.catalog_id}:{host.device_id}"
+def idempotency_key(config: Config, host: Host, attempt_id: str) -> str:
+    """One booking attempt. Retries in this run reuse attempt_id. A later run does not."""
+
+    return f"{config.tenant}:{attempt_id}:{config.catalog_id}:{host.device_id}"
 
 
-def open_lease(config: Config, client: httpx.Client, host: Host) -> OpenedLease:
+def open_lease(
+    config: Config, client: httpx.Client, host: Host, attempt_id: str
+) -> OpenedLease:
     headers = tenant_headers(config)
-    headers["Idempotency-Key"] = idempotency_key(config, host)
+    headers["Idempotency-Key"] = idempotency_key(config, host, attempt_id)
     response = client.post(
         api_url(config.api_base, "/api/v1/hypermesh/leases"),
         headers=headers,
@@ -205,14 +215,42 @@ def stitch(parts: list[tuple[OpenedLease, str]], *, catalog_id: str) -> dict[str
     }
 
 
+def _tickets_match(selected: list[OpenedLease], tickets: dict[str, str]) -> bool:
+    return all(tickets.get(lease.device_id) == lease.lease_id for lease in selected)
+
+
+def _await_tickets(
+    config: Config,
+    client: httpx.Client,
+    selected: list[OpenedLease],
+    *,
+    ticket_wait_s: float,
+    ticket_poll_s: float,
+    sleep: Callable[[float], None],
+    monotonic: Callable[[], float],
+) -> dict[str, str]:
+    """Poll until every selected lease has its ticket, or the wait expires."""
+
+    deadline = monotonic() + max(0.0, ticket_wait_s)
+    confirmed = fetch_host_tickets(config, client)
+    while not _tickets_match(selected, confirmed) and monotonic() < deadline:
+        step = min(ticket_poll_s, deadline - monotonic())
+        if step <= 0:
+            break
+        sleep(step)
+        confirmed = fetch_host_tickets(config, client)
+    return confirmed
+
+
 def _select_leases(
     config: Config,
     client: httpx.Client,
     hosts: list[Host],
     tickets: dict[str, str],
     live: list[dict[str, str]],
+    attempt_id: str,
 ) -> list[OpenedLease]:
-    """Reuse a ticketed or live lease. Open only a host that has neither."""
+    """Reuse a ticketed or starting/active lease. Open only a host that has neither."""
 
     by_device = {row["device_id"]: row["id"] for row in live}
     selected: list[OpenedLease] = []
@@ -233,20 +271,38 @@ def _select_leases(
                 OpenedLease(device_id=host.device_id, lease_id=existing, opened_here=False)
             )
             continue
-        selected.append(open_lease(config, client, host))
+        selected.append(open_lease(config, client, host, attempt_id))
     return selected
 
 
-def run(config: Config, *, client: httpx.Client) -> dict[str, object]:
+def run(
+    config: Config,
+    *,
+    client: httpx.Client,
+    ticket_wait_s: float = DEFAULT_TICKET_WAIT_S,
+    ticket_poll_s: float = DEFAULT_TICKET_POLL_S,
+    sleep: Callable[[float], None] = time.sleep,
+    monotonic: Callable[[], float] = time.monotonic,
+    attempt_id: str | None = None,
+) -> dict[str, object]:
     """Renter and native both land here. Flags choose the URLs."""
 
     hosts = fetch_allowed(config, client)
     if not hosts:
         raise OrchestratorError("allowed set is empty")
+    booking = attempt_id or uuid.uuid4().hex
     tickets = fetch_host_tickets(config, client)
     live = list_leases(config, client)
-    selected = _select_leases(config, client, hosts, tickets, live)
-    confirmed = fetch_host_tickets(config, client)
+    selected = _select_leases(config, client, hosts, tickets, live, booking)
+    confirmed = _await_tickets(
+        config,
+        client,
+        selected,
+        ticket_wait_s=ticket_wait_s,
+        ticket_poll_s=ticket_poll_s,
+        sleep=sleep,
+        monotonic=monotonic,
+    )
     missing = [lease for lease in selected if confirmed.get(lease.device_id) != lease.lease_id]
     if missing:
         _close_opened(config, client, selected)
