@@ -132,8 +132,6 @@ def open_lease(
             "device_id": host.device_id,
             "purpose": "renter",
             "reserved_hours": 1,
-            "success_url": config.success_url,
-            "cancel_url": config.cancel_url,
         },
     )
     if response.status_code not in {200, 201}:

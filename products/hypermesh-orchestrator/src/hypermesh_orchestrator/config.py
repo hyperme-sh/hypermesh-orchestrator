@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 TEST_API = "https://api.test.hyperme.sh"
 TEST_CHAT = "https://chat.test.hyperme.sh"
-TEST_PORTAL = "https://portal.test.hyperme.sh"
 DEFAULT_CATALOG = "llama-3.1-8b-q4"
 DEFAULT_MESSAGE = "Reply with the single word ready."
 # Matches hypermesh fleet health: a host heartbeat older than this is stale,
@@ -29,8 +28,6 @@ class Config:
     api_key: str
     catalog_id: str = DEFAULT_CATALOG
     message: str = DEFAULT_MESSAGE
-    success_url: str = f"{TEST_PORTAL}/hypermesh/ok"
-    cancel_url: str = f"{TEST_PORTAL}/hypermesh/cancel"
     ticket_wait_s: float = DEFAULT_TICKET_WAIT_S
 
     def __post_init__(self) -> None:
