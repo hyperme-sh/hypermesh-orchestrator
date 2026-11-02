@@ -20,11 +20,10 @@ dev = [
 ]
 
 [tool.hatch.build.targets.wheel]
-only-include = ["src/hypermesh_orchestrator"]
+packages = ["src/hypermesh_orchestrator"]
 
 [tool.hatch.build.targets.sdist]
-include = ["src/hypermesh_orchestrator"]
+include = ["src", "tests", "scripts", "README.md", "AGENTS.md", "edge-routes.json", "pyproject.toml", "uv.lock"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["src"]
