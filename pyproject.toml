@@ -1,0 +1,29 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "hypermesh-orchestrator"
+version = "0.1.0"
+requires-python = ">=3.13"
+description = "Cross-host Hypermesh orchestrator. One lease per host, one stitched completion."
+dependencies = [
+    "httpx>=0.28.0",
+]
+
+[project.scripts]
+hypermesh-orchestrator = "hypermesh_orchestrator.cli:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.0",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/hypermesh_orchestrator"]
+
+[tool.hatch.build.targets.sdist]
+include = ["src", "tests", "scripts", "README.md", "AGENTS.md", "edge-routes.json", "pyproject.toml", "uv.lock"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
