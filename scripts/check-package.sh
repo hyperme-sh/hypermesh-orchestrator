@@ -28,3 +28,9 @@ uv run --frozen python scripts/verify_wheel.py "$scratch/rebuilt"
 uv pip install --python "$scratch/venv/bin/python" --no-deps --reinstall "$scratch"/rebuilt/*.whl
 (cd "$scratch" && "$scratch/venv/bin/python" -I -m pytest -c /dev/null tests)
 (cd "$scratch" && "$scratch/venv/bin/hypermesh-orchestrator" --help >/dev/null)
+
+# Retain the exact validated bytes for the release channel; never rebuild them.
+if [[ -n "${RELEASE_ARTIFACT_DIR:-}" ]]; then
+  mkdir -p "$RELEASE_ARTIFACT_DIR"
+  cp "$scratch/dist"/* "$RELEASE_ARTIFACT_DIR/"
+fi
