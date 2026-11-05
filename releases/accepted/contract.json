@@ -1,0 +1,11 @@
+{
+  "coverage": "conservative complete packaged orchestrator runtime, CLI and fanout bytes",
+  "packaged_file_sha256": {
+    "hypermesh_orchestrator/__init__.py": "de87adab541f9e10b592fd77ab92b8a03093c0ef8f4fbd76cd4cf51e6dff0380",
+    "hypermesh_orchestrator/__main__.py": "521d69b905c7cc712c0fc01020a5d981bd3a7d53d82c6014344afd9df6105fa5",
+    "hypermesh_orchestrator/cli.py": "315b552e2959a8f5d02865408baf64576beebb576e19d556716577723e05a433",
+    "hypermesh_orchestrator/config.py": "8545b45deb5f36b351ae22075a795b3aa3d237219e02f172a4e1c4b11da11a05",
+    "hypermesh_orchestrator/run.py": "80c9f3ef88bfae90bab8a7e3ec1f0c5d8f0103cb52b1552284ede9590077412b"
+  },
+  "schema_version": 1
+}
