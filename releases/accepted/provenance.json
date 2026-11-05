@@ -1,0 +1,14 @@
+{
+  "schema_version": 1,
+  "repository": "hyperme-sh/hypermesh-orchestrator",
+  "tag": "v0.24.0",
+  "revision": "b9abc3e2797b18793979054e4a69b9abf73694bf",
+  "release_id": 434687212,
+  "assets": {
+    "hypermesh_orchestrator-0.24.0-py3-none-any.whl": "sha256:1fa926a9d166a6568501749e8f0b11d85ce64aa9df9ff8390d6f936981c0de94",
+    "hypermesh_orchestrator-0.24.0.tar.gz": "sha256:aeb5cb90926d9f1714dd3f4d1c1881d525663e26e702bf2af7aa4fd84d037796",
+    "release-manifest.json": "sha256:2419ad71c34ee922a99df8e6c468f9d4bff0f014f2b970928a1a9bd1406e2eb1"
+  },
+  "published_release_url": "https://github.com/hyperme-sh/hypermesh-orchestrator/releases/tag/v0.24.0",
+  "qualification": "Existing immutable stable distribution; runtime deployment and coordinated consumer acceptance remain separate."
+}
