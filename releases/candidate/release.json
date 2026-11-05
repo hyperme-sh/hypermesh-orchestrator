@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "line": "0.24",
+  "components": {
+    "hypermesh-orchestrator": {
+      "version": "0.24.0",
+      "contract": "contract.json",
+      "contract_sha256": "95fe1e1e7abfa85715f0d22a73d2aa068cae00fd7632862effa723217846048a",
+      "artifact": {
+        "kind": "package",
+        "uri": "urn:sha256:1fa926a9d166a6568501749e8f0b11d85ce64aa9df9ff8390d6f936981c0de94",
+        "sha256": "1fa926a9d166a6568501749e8f0b11d85ce64aa9df9ff8390d6f936981c0de94"
+      }
+    }
+  }
+}
