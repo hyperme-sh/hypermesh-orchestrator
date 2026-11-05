@@ -39,3 +39,12 @@ approvals, CODEOWNERS approval requirements, or release/deployment approval gate
 unless the user explicitly requests that specific change. This includes production
 releases. Automated tests and advisory reviews are welcome; human approval
 prerequisites are not. GitHub plan upgrades are not release-adoption prerequisites.
+
+## Artifact contracts
+
+Version 0.24.0 preserves the packaged orchestrator runtime and command behavior.
+CI exports complete wheel runtime bytes without executing candidate code, binds
+the candidate to the actual build and compares rebuilt-sdist contracts. The
+conservative byte contract rejects implementation-only patch changes too.
+Installed CLI and mocked HTTP consumers are required; live host/payment/gateway
+and deployment acceptance remain separate.
