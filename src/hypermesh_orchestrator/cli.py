@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import asdict
 import argparse
 import json
 import os
@@ -18,6 +19,7 @@ from hypermesh_orchestrator.config import (
     OrchestratorError,
     resolve_ticket_wait_s,
 )
+from hypermesh_orchestrator.leases import acquire_leases
 from hypermesh_orchestrator.run import run
 
 
@@ -42,6 +44,7 @@ def build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Seconds to wait for a host ticket after a new lease (default 180)",
     )
+    parser.add_argument("--prepare-leases", action="store_true", help="Return ticketed leases as JSON without inference")
     return parser
 
 
@@ -67,6 +70,10 @@ def main(argv: list[str] | None = None) -> int:
             ticket_wait_s=ticket_wait_s,
         )
         with httpx.Client(timeout=httpx.Timeout(30.0)) as client:
+            if args.prepare_leases:
+                with acquire_leases(config, client=client) as leases:
+                    print(json.dumps({"schema_version": 1, "leases": [asdict(lease) for lease in leases]}), flush=True)
+                return 0
             stitched = run(config, client=client, ticket_wait_s=config.ticket_wait_s)
     except OrchestratorError as exc:
         print(str(exc), file=sys.stderr)

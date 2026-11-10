@@ -107,3 +107,17 @@ publisher independently verifies a real immutable stable baseline and refuses
 qualification snapshots, even if a caller job reports success. Existing valid
 stable records are retained; no release, version change, deployment or human
 approval prerequisite is introduced by this correction.
+
+### Lease client
+
+Python consumers can use `hypermesh_orchestrator.leases.acquire_leases(config,
+client=client)` as a context manager. It yields ticket-confirmed leases with
+device ID, lease ID and an ownership flag. Raising inside the context closes
+leases opened by that attempt. Normal exit leaves them available to the renter.
+
+Other runtimes can invoke the installed CLI with `--prepare-leases` and the
+usual tenant, plane and catalog flags. Exit zero returns a single JSON object
+with `schema_version: 1` and a `leases` array containing `device_id`, `lease_id`
+and `opened_here`. This explicitly prepares capacity and can open offers.
+The caller owns subsequent use and cleanup of newly opened leases. The default
+CLI continues to perform inference and return a stitched completion.
