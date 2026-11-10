@@ -401,3 +401,28 @@ def test_chat_url_refuses_the_control_plane_stub():
         )
     with pytest.raises(OrchestratorError, match="control-plane chat stub"):
         _config(chat_base="https://api.test.hyperme.sh/api/v1/hypermesh/renter/chat/completions")
+
+
+def test_partial_acquisition_rolls_back_first_host():
+    from hypermesh_orchestrator.leases import acquire_leases
+    plane = Plane(grant_ticket_on_open=True)
+
+    def fail_second(req):
+        if req.method == "POST" and req.url.path.endswith("/leases") and plane.opened:
+            raise httpx.ReadError("lost response")
+        return plane.handler(req)
+
+    with httpx.Client(transport=httpx.MockTransport(fail_second)) as client:
+        with pytest.raises(httpx.ReadError), acquire_leases(_config(), client=client):
+            pytest.fail("unconfirmed leases exposed")
+    assert plane.closed == [LEASE_A]
+
+
+def test_lease_only_success_reuses_ticket_without_chat_or_close():
+    from hypermesh_orchestrator.leases import acquire_leases
+    plane = Plane(tickets=[HOST_A], grant_ticket_on_open=True)
+    with httpx.Client(transport=httpx.MockTransport(plane.handler)) as client:
+        with acquire_leases(_config(), client=client) as leases:
+            assert [(lease.device_id, lease.opened_here) for lease in leases] == [(HOST_A, False), (HOST_B, True)]
+    assert not plane.closed
+    assert not any("completions" in call for call in plane.calls)
