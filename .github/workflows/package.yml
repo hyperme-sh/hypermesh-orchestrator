@@ -1,18 +1,13 @@
 name: Standalone package
 on:
   pull_request:
-  push:
-    branches: [main]
-  workflow_dispatch:
 permissions:
   contents: read
 jobs:
   package:
-    runs-on: [self-hosted, linux, x64, debrunner]
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted", "linux", "x64", "debrunner"]') || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
-      - name: Prepare release output
-        run: echo "RELEASE_ARTIFACT_DIR=$(mktemp -d "$RUNNER_TEMP/release-dist.XXXXXX")" >> "$GITHUB_ENV"
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
           persist-credentials: false
@@ -21,13 +16,11 @@ jobs:
           version: '0.11.26'
           python-version: '3.13'
       - run: bash scripts/check-package.sh
-      # GitHub checks action allowlists even when this main-only upload is skipped.
-      - name: Retain validated package bytes
-        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
-        with:
-          name: tested-dist
-          path: ${{ env.RELEASE_ARTIFACT_DIR }}/*
-          if-no-files-found: error
-          retention-days: 90
-          compression-level: 0
+      - run: python3 scripts/test-image-publication.py
+      - name: Build CLI without publication credentials
+        run: |
+          set -euo pipefail
+          image="orchestrator:pr-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          trap 'docker image rm "$image" >/dev/null 2>&1 || true' EXIT
+          docker build --build-arg SOURCE_SHA="$GITHUB_SHA" -t "$image" .
+          docker run --rm --network none "$image" --help >/dev/null

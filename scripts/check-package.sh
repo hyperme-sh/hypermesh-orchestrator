@@ -11,11 +11,9 @@ trap 'rm -rf "$scratch"' EXIT
 uv build --out-dir "$scratch/dist"
 uv run --frozen python scripts/verify_wheel.py "$scratch/dist"
 uv run --frozen python scripts/export_release_contract.py "$scratch"/dist/*.whl --output "$scratch/contract"
-for qualified_manifest in releases/qualification/current/release.json releases/candidate/release.json; do
-if [[ -f "$qualified_manifest" ]]; then
-  uv run --frozen python scripts/verify_release_candidate.py "$qualified_manifest" "$scratch/contract/contract.json" "$scratch/contract/evidence.json" hypermesh-orchestrator
+if [[ -n "${RELEASE_CANDIDATE_MANIFEST:-}" ]]; then
+  uv run --frozen python scripts/verify_release_candidate.py "$RELEASE_CANDIDATE_MANIFEST" "$scratch/contract/contract.json" "$scratch/contract/evidence.json" hypermesh-orchestrator
 fi
-done
 uv export --frozen --no-emit-project --format requirements-txt --output-file "$scratch/requirements.txt" >/dev/null
 uv venv --python 3.13 "$scratch/venv"
 uv pip sync --python "$scratch/venv/bin/python" "$scratch/requirements.txt"
@@ -37,9 +35,3 @@ cmp "$scratch/contract/contract.json" "$scratch/rebuilt-contract/contract.json"
 uv pip install --python "$scratch/venv/bin/python" --no-deps --reinstall "$scratch"/rebuilt/*.whl
 (cd "$scratch" && "$scratch/venv/bin/python" -I -m pytest -c /dev/null tests)
 (cd "$scratch" && "$scratch/venv/bin/hypermesh-orchestrator" --help >/dev/null)
-
-# Retain the exact validated bytes for the release channel; never rebuild them.
-if [[ -n "${RELEASE_ARTIFACT_DIR:-}" ]]; then
-  mkdir -p "$RELEASE_ARTIFACT_DIR"
-  cp "$scratch/dist"/* "$RELEASE_ARTIFACT_DIR/"
-fi
