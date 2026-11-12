@@ -62,8 +62,8 @@ The package check uses a frozen dependency lock, tests the source installation,
 a fresh wheel outside the checkout, and a wheel rebuilt from the source archive.
 It also verifies wheel payload bytes and the installed command entry point.
 The test suite uses mocked HTTP and time; it does not establish live host,
-payment, gateway or deployment acceptance. CI uses disposable GitHub-hosted
-workers with read-only repository permissions and no service credentials.
+payment, gateway or deployment acceptance. PR CI uses read-only repository permissions and no service credentials.
+Workers use debrunner while private and GitHub-hosted Ubuntu when public.
 
 ## Container distribution
 
