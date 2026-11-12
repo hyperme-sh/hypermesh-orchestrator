@@ -63,14 +63,13 @@ a fresh wheel outside the checkout, and a wheel rebuilt from the source archive.
 It also verifies wheel payload bytes and the installed command entry point.
 The test suite uses mocked HTTP and time; it does not establish live host,
 payment, gateway or deployment acceptance. PR CI uses read-only repository permissions and no service credentials.
-Workers use debrunner while private and GitHub-hosted Ubuntu when public.
+Workers use GitHub-hosted Ubuntu.
 
 ## Container distribution
 
 Merged main publishes `ghcr.io/hyperme-sh/hypermesh-orchestrator/runtime:test`.
 Use the moving TEST channel; no deployed version or digest pin is required.
-PR checks use read-only permissions and mocked HTTP. Jobs use debrunner while
-private and automatically use hosted Ubuntu when public. No Actions archives,
+PR checks use read-only permissions and mocked HTTP. Jobs use GitHub-hosted Ubuntu. No Actions archives,
 package bundles or release tags are published. Temporary package files are used
 only for validation. Runtime configuration and keys are supplied at invocation.
 

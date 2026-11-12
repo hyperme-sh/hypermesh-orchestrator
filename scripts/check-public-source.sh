@@ -14,7 +14,7 @@ tar -xzf "$scratch/$name" -C "$scratch/tool" gitleaks
 git archive HEAD | tar -xf - -C "$scratch/source"
 for required in AGENTS.md docs/release-policy.md LICENSE NOTICE; do test -s "$scratch/source/$required"; done
 if rg -n 'shared-local|upload-artifact|download-artifact' "$scratch/source/.github/workflows"; then
-  echo 'CI must use visibility-based runners and container-only distribution' >&2
+  echo 'CI must use hosted runners and container-only distribution' >&2
   exit 1
 fi
 "$scratch/tool/gitleaks" dir "$scratch/source" --redact --no-banner --max-archive-depth 3 --ignore-gitleaks-allow
