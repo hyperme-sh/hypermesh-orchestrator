@@ -20,8 +20,7 @@ e2e and shared-resource runs belong in CI and the nightly batch; never start or
 repeat those suites manually. Green PR CI and clean review complete issues;
 nightly failures become new issues, not completion gates.
 
-Jobs use `[self-hosted, linux, x64, debrunner]` while private and automatically
-switch to GitHub-hosted `ubuntu-24.04` when public. Public PRs must not reach
+Jobs use GitHub-hosted `ubuntu-24.04`. Public PRs must not reach
 private runners or receive publication credentials. PR validation is read-only.
 Only validated merged-main container builds may update the GHCR TEST channel.
 No artifact uploads, package bundles or test-release tags. Keep credentials out

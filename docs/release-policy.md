@@ -12,8 +12,7 @@ mocked HTTP. Development needs no previous stable release. A selected candidate
 must match its declared build; never fabricate baseline identities or hashes.
 
 Merged main builds/checks the CLI container and publishes the moving GHCR
-`runtime:test` channel. PR checks are read-only. Private jobs use debrunner;
-public jobs use hosted Ubuntu. The publisher verifies the built image and skips
+`runtime:test` channel. PR checks are read-only. All jobs use GitHub-hosted Ubuntu. The publisher verifies the built image and skips
 superseded main revisions. Keys are runtime environment configuration, never
 baked into the image. No package bundles, Actions uploads or test-release tags
 are published. Temporary package builds are discarded after validation.
