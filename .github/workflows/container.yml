@@ -1,0 +1,65 @@
+name: Container distribution
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+concurrency:
+  group: orchestrator-moving-test-image
+  cancel-in-progress: false
+jobs:
+  container:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ${{ github.event.repository.private && fromJSON('["self-hosted", "linux", "x64", "debrunner"]') || 'ubuntu-24.04' }}
+    timeout-minutes: 25
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: astral-sh/setup-uv@68559e99cc807c1eb7e9238fd43a15bba460eec2
+        with:
+          version: '0.11.26'
+          python-version: '3.13'
+      - name: Validate source and package contracts
+        run: bash scripts/check-package.sh
+      - name: Build and check runtime container
+        run: |
+          set -euo pipefail
+          image="orchestrator:ci-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT"
+          docker build --build-arg SOURCE_SHA="$GITHUB_SHA" \
+            --build-arg BUILT_AT="$(date -u +%Y-%m-%dT%H:%M:%SZ)" -t "$image" .
+          docker run --rm --network none "$image" --help >/dev/null
+          echo "QUALIFIED_REF=$image" >> "$GITHUB_ENV"
+          echo "QUALIFIED_ID=$(docker image inspect "$image" --format '{{.Id}}')" >> "$GITHUB_ENV"
+      - name: Advance moving TEST channel from qualified current main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          # Superseded main builds must not replace the current TEST channel.
+          current=$(gh api "repos/$GITHUB_REPOSITORY/commits/main" --jq .sha)
+          if [[ "$current" != "$GITHUB_SHA" ]]; then
+            echo 'Superseded build; moving TEST is unchanged'
+            exit 0
+          fi
+          test "$(docker image inspect "$QUALIFIED_REF" --format '{{.Id}}')" = "$QUALIFIED_ID"
+          test "$(docker image inspect "$QUALIFIED_REF" --format '{{ index .Config.Labels "org.opencontainers.image.revision" }}')" = "$GITHUB_SHA"
+          export DOCKER_CONFIG=$(mktemp -d "$RUNNER_TEMP/test-channel-login.XXXXXX")
+          channel="ghcr.io/${GITHUB_REPOSITORY,,}/runtime:test"
+          trap 'docker image rm "$channel" >/dev/null 2>&1 || true; rm -rf -- "$DOCKER_CONFIG"' EXIT
+          printf '%s' "$GH_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker tag "$QUALIFIED_ID" "$channel"
+          docker push "$channel"
+          docker pull "$channel"
+          test "$(docker image inspect "$channel" --format '{{.Id}}')" = "$QUALIFIED_ID"
+          echo "$channel tracks qualified main $GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
+      - name: Verify public anonymous container access
+        if: github.event.repository.private == false
+        run: python3 scripts/check-public-container.py
+      - name: Remove job-local container tag
+        if: always()
+        run: docker image rm "orchestrator:ci-$GITHUB_RUN_ID-$GITHUB_RUN_ATTEMPT" >/dev/null 2>&1 || true

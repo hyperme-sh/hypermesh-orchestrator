@@ -426,3 +426,12 @@ def test_lease_only_success_reuses_ticket_without_chat_or_close():
             assert [(lease.device_id, lease.opened_here) for lease in leases] == [(HOST_A, False), (HOST_B, True)]
     assert not plane.closed
     assert not any("completions" in call for call in plane.calls)
+
+
+@pytest.mark.parametrize('state',['offered','funded','paid','suspended','closed'])
+def test_funding_is_not_usable_capacity(state):
+    from hypermesh_orchestrator.leases import list_leases
+    def handler(request):
+        return httpx.Response(200,json=[{'id':LEASE_A,'device_id':HOST_A,'status':state}])
+    with httpx.Client(transport=httpx.MockTransport(handler)) as client:
+        assert list_leases(_config(),client)==[]
